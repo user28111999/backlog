@@ -11,6 +11,7 @@
     "db:generate": "node scripts/prisma.cjs generate",
     "test:api": "node --test tests/api.test.mjs",
     "test:unit": "tsx --test tests/*.test.ts",
+    "predb:seed": "npm run db:generate && npm run db:push",
     "db:seed": "tsx scripts/seed-games.tsx"
   },
   "dependencies": {

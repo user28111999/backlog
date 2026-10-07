@@ -56,12 +56,14 @@ After pulling changes, reinstall if dependencies changed; regenerate/apply the d
 
 Your full 750-entry list is embedded in `scripts/game-list.ts`. The executable script is `scripts/seed-games.tsx`; it inserts those entries directly into SQLite. No file upload or import/export controls are needed.
 
-After installing dependencies and preparing the database, run:
+After installing dependencies, run:
 
 ```sh
 npm run db:seed
 npm run dev
 ```
+
+`db:seed` automatically runs `db:generate` and `db:push` first through npm's `predb:seed` hook. This recreates the generated Prisma client after `npm ci` and prepares the database tables before loading the list. Schema setup refuses destructive-change warnings.
 
 You can run the seed command again safely: it adds missing entries and preserves existing edits, ratings, artwork, and playtime. Repeated titles in different categories and repeated source rows stay separate. Keys from the previous import are retained so existing collections are not duplicated.
 

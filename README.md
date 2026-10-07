@@ -24,6 +24,8 @@ To configure optional providers later, copy `.env.example` to `.env` and fill in
 
 For later updates, run `git pull --ff-only` while on `proto`, then repeat `npm ci`, `npm run db:generate`, and `npm run db:push`. Stop the app first and back up `prisma/dev.db` before applying schema changes. Git downloads source code; it does not transfer your personal game database between computers.
 
+`npm run db:seed` automatically generates the Prisma client and prepares the SQLite tables before loading games. You can run it immediately after `npm ci`; repeated runs preserve existing entries and edits.
+
 ## GitHub, Codex, and branch rules
 
 Publishing a Codex environment saves its prepared machine and configuration. A Git **commit** records a version of the source code; a Git **push** uploads commits to GitHub. Environment publication does not perform those Git operations.
