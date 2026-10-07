@@ -28,7 +28,12 @@ export async function PATCH(req: Request, c: Context) {
     return NextResponse.json(
       await db.game.update({
         where: { id: (await c.params).id },
-        data,
+        data: {
+          ...data,
+          ...(Object.hasOwn(data, "hltbId") || Object.hasOwn(data, "title")
+            ? { hltbFetchedAt: null }
+            : {}),
+        },
       }),
     );
   } catch (e) {

@@ -53,8 +53,8 @@ The orchestration code is in `app/api/games/enrich/route.ts`.
 | IGDB | Fallback metadata and artwork when no Steam game is found | Optional `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` |
 | HowLongToBeat | Main story, main + extras, and completionist estimates | No Twitch or IGDB credentials |
 
-Purgatorio uses the original npm package `howlongtobeat-js` to search HowLongToBeat directly by title. `lib/hltb.ts` selects the highest similarity match at or above 0.8 and maps its hours into the app. `lib/howlongtobeat.d.ts` describes the package's types for TypeScript; it is not another implementation. No separate API service or base-URL setting is used.
+`lib/hltb.ts` contacts HowLongToBeat directly using the site's current session-initialized search protocol. Optional numeric IDs select a game without title search by reading structured data from its game page. The obsolete `howlongtobeat-js` dependency and declaration file have been removed. No separate API service or base-URL setting is used.
 
-The package is installed normally by npm. No installed package is edited manually. Missing or zero estimates stay blank, and request failures preserve saved estimates. HowLongToBeat's website may block automated requests or change its endpoints; build and local API tests do not prove that this external provider is reachable.
+No installed package is edited manually. Missing or zero estimates stay blank, and request failures preserve saved estimates. HowLongToBeat's website may block requests or reject a search session. The client retries an expired session once and displays a specific error if it still fails; manual ID lookup provides an independent path.
 
-After restoring this integration, the production build, eight unit tests, and seven local API checks passed. A live Portal 2 lookup received HTTP 403 when accessing HowLongToBeat from the cloud environment, so live estimates could not be verified there.
+Live checks of the updated client returned Portal 2 estimates using ID 7231 and Elden Ring estimates using title search. Portal 2 title searches also encountered intermittent session/fingerprint rejection from the provider in the cloud environment, including after session refresh. ID lookup succeeded independently. These samples do not guarantee every provider request will succeed.

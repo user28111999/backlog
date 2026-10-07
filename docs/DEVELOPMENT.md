@@ -73,9 +73,11 @@ GitHub carries the embedded list and script. Your local SQLite database still st
 
 ## How completion times are fetched
 
-Purgatorio uses `howlongtobeat-js`, the same npm package as the first version. It contacts HowLongToBeat directly from the server; no separate .NET service or API URL is needed.
+Purgatorio contacts HowLongToBeat directly from the server; no separate .NET service or API URL is needed. The obsolete `howlongtobeat-js` scraper has been removed because its search-key extraction no longer matches the website.
 
-`lib/hltb.ts` searches by game title, selects the highest similarity result with a score of at least 0.8, and maps `mainStory`, `mainExtra`, and `completionist` into the three estimate columns. These values are hours. Missing or zero estimates stay blank and never overwrite **Your playtime**. A failed request preserves saved estimates instead of treating a network error as a confirmed missing game. Similar titles can still produce incorrect matches, so review fetched values before saving.
+`lib/hltb.ts` initializes the site's current search session, then searches for a unique normalized title match. It refreshes a rejected session once. A supplied HowLongToBeat ID reads the game's structured page data directly, bypassing title search. The site's `comp_main`, `comp_plus`, and `comp_100` values are seconds; the client converts them to hours. Missing or zero estimates stay blank and never overwrite **Your playtime**. Failed requests preserve saved estimates and show the provider's failure reason.
+
+In the add/edit form, enter an optional **IGDB ID** or **HowLongToBeat ID** and click **Fetch metadata & artwork**. The HowLongToBeat ID is the numeric part of a URL such as `https://howlongtobeat.com/game/7231`. Use the numeric IGDB game ID, not its URL or title slug. IDs are saved with the game and filled automatically when a match is found. An explicit IGDB ID takes priority for IGDB metadata even if Steam found a game; IGDB still requires the Twitch credentials in `.env`.
 
 Purgatorio automatically fetches estimates when you view a game and caches a successful lookup, including a confirmed no-match, for 24 hours. The add/edit form automatically fetches estimates and available artwork after the title or Steam ID settles. Existing artwork is preserved during automatic requests, and stale requests are cancelled when you change the title.
 

@@ -32,6 +32,8 @@ model Game {
   modNotes String?
   additionalNotes String?
   steamAppId String?
+  igdbId String?
+  hltbId String?
   coverUrl String @default("")
   logoUrl String @default("")
   heroUrl String @default("")

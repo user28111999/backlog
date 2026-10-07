@@ -41,6 +41,8 @@ export const gameSchema = z.object({
   modNotes: z.string().max(10000).nullable().optional(),
   additionalNotes: z.string().max(10000).nullable().optional(),
   steamAppId: z.string().regex(/^\d+$/).nullable().optional(),
+  igdbId: z.string().regex(/^[1-9]\d{0,15}$/).nullable().optional(),
+  hltbId: z.string().regex(/^[1-9]\d{0,15}$/).nullable().optional(),
   coverUrl: media.default(""),
   logoUrl: media.default(""),
   heroUrl: media.default(""),

@@ -284,7 +284,7 @@ export function HLTBCard({ game: g }: { game: Game }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [g.id, g.hltbFetchedAt, refresh]);
+  }, [g.id, g.hltbId, g.hltbFetchedAt, refresh]);
   const values = [
     { name: "Your playtime", value: g.timePlayedHours, own: true },
     { name: "Main story", value: g.hltbMainStoryHours },
@@ -299,7 +299,11 @@ export function HLTBCard({ game: g }: { game: Game }) {
           <Clock3 size={16} /> Time well spent
         </h3>
         <a
-          href={`https://howlongtobeat.com/?q=${encodeURIComponent(g.title)}`}
+          href={
+            g.hltbId
+              ? `https://howlongtobeat.com/game/${g.hltbId}`
+              : `https://howlongtobeat.com/?q=${encodeURIComponent(g.title)}`
+          }
           target="_blank"
           rel="noreferrer"
         >
@@ -743,13 +747,20 @@ export function EnrichmentModal({
         body: JSON.stringify({
           title: form.title,
           steamAppId: form.steamAppId || undefined,
+          igdbId: form.igdbId || undefined,
+          hltbId: form.hltbId || undefined,
         }),
       });
       const result = await r.json();
       if (!r.ok) throw new Error(result.error);
       if (signal?.aborted) return;
       setForm((f) => {
-        if (f.title !== form.title || f.steamAppId !== form.steamAppId)
+        if (
+          f.title !== form.title ||
+          f.steamAppId !== form.steamAppId ||
+          f.igdbId !== form.igdbId ||
+          f.hltbId !== form.hltbId
+        )
           return f;
         const patch = { ...result.data };
         delete patch.title;
@@ -784,7 +795,14 @@ export function EnrichmentModal({
       setEnriching(false);
       return;
     }
-    if (form.steamAppId && !/^\d+$/.test(form.steamAppId)) return;
+    if (
+      [form.steamAppId, form.igdbId, form.hltbId].some(
+        (id) => id && !/^[1-9]\d{0,15}$/.test(id),
+      )
+    ) {
+      setEnriching(false);
+      return;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => {
       void enrich(controller.signal, true);
@@ -793,7 +811,7 @@ export function EnrichmentModal({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [form.title, form.steamAppId]);
+  }, [form.title, form.steamAppId, form.igdbId, form.hltbId]);
   const textField = (
     key: keyof GameInput,
     label: string,
@@ -810,7 +828,9 @@ export function EnrichmentModal({
           set(
             key,
             e.target.value ||
-              (["releaseDate", "steamAppId"].includes(key) ? null : ""),
+              (["releaseDate", "steamAppId", "igdbId", "hltbId"].includes(key)
+                ? null
+                : ""),
           )
         }
       />
@@ -862,6 +882,12 @@ export function EnrichmentModal({
         <div className="form-grid">
           {textField("title", "Game title *", "e.g. Hollow Knight")}
           {textField("steamAppId", "Steam App ID (optional)", "e.g. 367520")}
+          {textField("igdbId", "IGDB ID (optional)", "Numeric ID from IGDB")}
+          {textField(
+            "hltbId",
+            "HowLongToBeat ID (optional)",
+            "Number in the /game/ URL",
+          )}
         </div>
         <Button
           type="button"

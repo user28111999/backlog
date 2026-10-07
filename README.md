@@ -68,7 +68,7 @@ The environment is already isolated: use this checkout; do not create an additio
 - Square-tile collection homepage when no game is selected; a blurred background uses an existing screenshot from a played game when available.
 - Add/edit dialog with searchable platform chips, comma-separated entry, and automatic metadata fetching. Review fetched values before saving.
 - Finished and Waiting statuses, categories, and a repeat-safe script with your complete game list.
-- Actual completion estimates from HowLongToBeat using the original `howlongtobeat-js` package; missing estimates remain blank and personal playtime remains separate.
+- Actual completion estimates fetched directly from HowLongToBeat; optional HowLongToBeat and IGDB IDs select specific games. Missing estimates remain blank and personal playtime remains separate.
 - A Steam screenshot-fetch button for the public `windowpeeper` profile, plus a direct link to its filtered screenshot page.
 - Game details with artwork, Steam links, playtime comparisons, interactive rating, notes, mods, trailers, and screenshot lightbox.
 - `GET/POST /api/games`, `GET/PATCH/DELETE /api/games/:id`, and `POST /api/games/enrich`.
@@ -82,10 +82,10 @@ Set credentials in your deployment's secure environment settings or an ignored `
 | --- | --- | --- |
 | Steam Store | No key | Exact-title search or a supplied Steam App ID; details, screenshots, trailers, release date, and default artwork |
 | SteamGridDB | `STEAMGRIDDB_API_KEY` | Vertical grids, heroes, transparent logos for a matched Steam game |
-| IGDB/Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | OAuth client-credentials exchange, then exact-title IGDB fallback for non-Steam games |
-| HowLongToBeat | No key or extra configuration | `howlongtobeat-js` searches directly by title and selects the highest similarity match (at least 0.8) |
+| IGDB/Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | OAuth client-credentials exchange; exact-title fallback or an optional IGDB ID, including for Steam games |
+| HowLongToBeat | No key or extra configuration | Direct title search with session initialization, or direct game-page lookup using an optional HowLongToBeat ID |
 
-The server must reach `store.steampowered.com`, `steamcommunity.com`, `www.steamgriddb.com`, `id.twitch.tv`, `api.igdb.com`, and `howlongtobeat.com`. Client artwork may use Steam CDN hosts, `images.igdb.com`, and image hosts returned by SteamGridDB. Server requests honor standard HTTP proxy variables. Provider failures leave missing values blank. Form metadata is saved with the game; estimates fetched while viewing a game and screenshots fetched through the button are saved directly. Steam/IGDB use exact-title or Steam-ID matching; HowLongToBeat uses title similarity, so review estimates for similarly named games.
+The server must reach `store.steampowered.com`, `steamcommunity.com`, `www.steamgriddb.com`, `id.twitch.tv`, `api.igdb.com`, and `howlongtobeat.com`. Client artwork may use Steam CDN hosts, `images.igdb.com`, and image hosts returned by SteamGridDB. Server requests honor standard HTTP proxy variables. Provider failures preserve saved values. Form metadata is saved with the game; estimates fetched while viewing a game and screenshots fetched through the button are saved directly. Title searches require a unique normalized title match; use the optional IDs to resolve ambiguous titles.
 
 Provider access depends on your environment's network settings. The basic library and game-list script work without provider credentials. IGDB needs Twitch credentials; SteamGridDB needs its own API key. Use `npm run test:unit` for platform filtering, provider response mapping, and screenshot parser checks; `npm run test:api` checks CRUD against a running server.
 

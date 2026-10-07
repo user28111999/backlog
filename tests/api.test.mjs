@@ -22,6 +22,8 @@ test("SQLite game lifecycle, validation, and partial update preservation", async
         reviewNotes: 'A review, with "quotes"\nand newlines.',
         gallery: ["https://example.com/screenshot.jpg"],
         hltbMainStoryHours: 20,
+        igdbId: "1942",
+        hltbId: "7231",
       });
       assert.equal(res.status, 201);
       const game = await res.json();
@@ -29,6 +31,8 @@ test("SQLite game lifecycle, validation, and partial update preservation", async
       assert.ok(id);
       assert.equal(game.platform, "Switch");
       assert.equal(game.hltbMainStoryHours, 20);
+      assert.equal(game.igdbId, "1942");
+      assert.equal(game.hltbId, "7231");
       const read = await request(`/api/games/${id}`, "GET");
       assert.equal(read.status, 200);
       assert.equal((await read.json()).modNotes, "Test mod");
@@ -43,6 +47,8 @@ test("SQLite game lifecycle, validation, and partial update preservation", async
       assert.equal(game.timePlayedHours, 12.5);
       assert.equal(game.isModded, true);
       assert.equal(game.gallery.length, 1);
+      assert.equal(game.igdbId, "1942");
+      assert.equal(game.hltbId, "7231");
     });
     await t.test(
       "invalid rating, status, playtime and media are rejected",
@@ -52,6 +58,9 @@ test("SQLite game lifecycle, validation, and partial update preservation", async
           { status: "UNKNOWN" },
           { timePlayedHours: -1 },
           { coverUrl: "javascript:alert(1)" },
+          { igdbId: "1; invalid" },
+          { hltbId: "0" },
+          { hltbId: "https://howlongtobeat.com/game/7231" },
         ])
           assert.equal(
             (await request(`/api/games/${id}`, "PATCH", body)).status,

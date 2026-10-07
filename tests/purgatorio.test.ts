@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { matchHltb, emptyTimes, fetchHltb } from "../lib/hltb";
-import { HowLongToBeat } from "howlongtobeat-js";
 import {
   parseScreenshotLinks,
   parseScreenshotImage,
@@ -10,45 +8,6 @@ import { splitPlatforms } from "../lib/platforms";
 import { filterGames } from "../lib/library-filter";
 import { gameSchema, type Game } from "../lib/game";
 
-test("HowLongToBeat maps actual API field names and treats zero/absent estimates as unknown", () => {
-  assert.deepEqual(
-    matchHltb(
-      [{
-        gameName: "Portal 2",
-        similarity: 1,
-        mainStory: 8.5,
-        mainExtra: 14,
-        completionist: 22,
-      }],
-    ),
-    {
-      hltbMainStoryHours: 8.5,
-      hltbMainExtraHours: 14,
-      hltbCompletionistHours: 22,
-    },
-  );
-  assert.deepEqual(
-    matchHltb(
-      [{ gameName: "Portal 2", similarity: 1, mainStory: 0, mainExtra: null }],
-    ),
-    emptyTimes,
-  );
-});
-test("HowLongToBeat selects the highest similarity and rejects weak/invalid results", () => {
-  assert.equal(matchHltb([{ gameName: "Portal", similarity: 0.6 }]), null);
-  assert.equal(matchHltb([]), null);
-  assert.deepEqual(matchHltb([
-    { gameName: "Portal", similarity: 0.8, mainStory: 3 },
-    { gameName: "Portal 2", similarity: 1, mainStory: 8.5 },
-  ]), { ...emptyTimes, hltbMainStoryHours: 8.5 });
-  assert.throws(() => matchHltb({ error: "Unavailable" }), /Invalid/);
-});
-test("HowLongToBeat distinguishes provider failures from a confirmed no-match", async (t) => {
-  const search = t.mock.method(HowLongToBeat.prototype, "search", async () => null);
-  await assert.rejects(fetchHltb("Portal 2"), /unavailable/);
-  search.mock.mockImplementation(async () => []);
-  assert.equal(await fetchHltb("Portal 2"), null);
-});
 test("platform tags are trimmed/deduplicated and filters match individual platforms", () => {
   assert.deepEqual(splitPlatforms(" PC, Switch, PC, pc, , PS5 "), [
     "PC",

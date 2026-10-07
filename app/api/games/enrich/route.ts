@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { emptyTimes, fetchHltb } from "@/lib/hltb";
+import { emptyTimes, fetchHltb, HltbProviderError } from "@/lib/hltb";
 import { apiError, sameOrigin } from "@/lib/http";
 import type { GameInput } from "@/lib/game";
 import { providerFetch } from "@/lib/provider-fetch";
+import { gameSchema } from "@/lib/game";
 const input = z.object({
   title: z.string().trim().min(1).max(200),
   steamAppId: z.string().regex(/^\d+$/).optional(),
+  igdbId: gameSchema.shape.igdbId,
+  hltbId: gameSchema.shape.hltbId,
 });
 async function json(url: string, init?: RequestInit) {
   const r = await providerFetch(url, {
@@ -21,11 +24,11 @@ export async function POST(req: Request) {
   if (!sameOrigin(req))
     return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   try {
-    const { title, steamAppId } = input.parse(await req.json());
+    const { title, steamAppId, igdbId, hltbId } = input.parse(await req.json());
     const data: Partial<GameInput> = {};
     const warnings: string[] = [];
     const sources: string[] = [];
-    const hltb = fetchHltb(title)
+    const hltb = fetchHltb(title, hltbId || undefined)
       .then((match) => {
         if (!match) {
           Object.assign(data, emptyTimes);
@@ -34,9 +37,11 @@ export async function POST(req: Request) {
         Object.assign(data, match);
         sources.push("HowLongToBeat");
       })
-      .catch(() => {
+      .catch((error) => {
         warnings.push(
-          "HowLongToBeat is unavailable. Missing estimates remain blank.",
+          error instanceof HltbProviderError
+            ? error.message
+            : "HowLongToBeat is unavailable. Saved estimates were kept.",
         );
       });
     let appId = steamAppId;
@@ -113,7 +118,9 @@ export async function POST(req: Request) {
         warnings.push(
           "Optional SteamGridDB artwork needs STEAMGRIDDB_API_KEY.",
         );
-    } else {
+    }
+    // An explicit IGDB ID always runs, even when Steam also found a match.
+    if (!steamFound || igdbId) {
       if (process.env.TWITCH_CLIENT_ID && process.env.TWITCH_CLIENT_SECRET) {
         try {
           const token = await json("https://id.twitch.tv/oauth2/token", {
@@ -131,13 +138,15 @@ export async function POST(req: Request) {
               Authorization: `Bearer ${token.access_token}`,
               "Content-Type": "text/plain",
             },
-            body: `search ${JSON.stringify(title)}; fields name,cover.image_id,screenshots.image_id,first_release_date; limit 5;`,
+            body: `${igdbId ? `where id = ${igdbId};` : `search ${JSON.stringify(title)};`} fields id,name,cover.image_id,screenshots.image_id,first_release_date; limit ${igdbId ? 1 : 5};`,
           });
-          const game = games.find(
-            (g: { name: string }) =>
-              g.name.toLowerCase() === title.toLowerCase(),
+          const game = games.find((g: { id: number; name: string }) =>
+            igdbId
+              ? String(g.id) === igdbId
+              : g.name.toLowerCase() === title.toLowerCase(),
           );
           if (game) {
+            data.igdbId = String(game.id);
             const asset = (id: string, size: string) =>
               `https://images.igdb.com/igdb/image/upload/t_${size}/${id}.jpg`;
             data.title = game.name;
@@ -153,7 +162,11 @@ export async function POST(req: Request) {
                 .slice(0, 10);
             sources.push("IGDB");
           } else
-            warnings.push("No exact IGDB match. Try the official game title.");
+            warnings.push(
+              igdbId
+                ? "No game found for that IGDB ID."
+                : "No exact IGDB match. Try an IGDB ID or the official game title.",
+            );
         } catch {
           warnings.push(
             "IGDB is unavailable; check Twitch credentials and provider access.",

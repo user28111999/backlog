@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { emptyTimes, fetchHltb } from "@/lib/hltb";
+import { emptyTimes, fetchHltb, HltbProviderError } from "@/lib/hltb";
 import { apiError, sameOrigin } from "@/lib/http";
 
 export async function POST(
@@ -20,18 +20,17 @@ export async function POST(
       Date.now() - game.hltbFetchedAt.getTime() < 86400000
     )
       return NextResponse.json({ game });
-    const times = await fetchHltb(game.title);
+    const times = await fetchHltb(game.title, game.hltbId || undefined);
     const updated = await db.game.update({
       where: { id: game.id },
       data: { ...(times || emptyTimes), hltbFetchedAt: new Date() },
     });
     return NextResponse.json({ game: updated });
   } catch (error) {
-    if (error instanceof Error && !("code" in error))
+    if (error instanceof HltbProviderError)
       return NextResponse.json(
         {
-          error:
-            "HowLongToBeat is unavailable. Missing estimates remain blank.",
+          error: error.message,
         },
         { status: 502 },
       );
