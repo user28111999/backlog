@@ -2,6 +2,7 @@ import type { Game } from "./game";
 export const csvFields: (keyof Game)[] = [
   "id",
   "title",
+  "category",
   "releaseDate",
   "status",
   "platform",
@@ -46,7 +47,7 @@ export function exportCSV(games: Game[]) {
   );
   const a = document.createElement("a");
   a.href = url;
-  a.download = `backlog-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `purgatorio-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

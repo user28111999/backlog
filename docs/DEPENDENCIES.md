@@ -53,18 +53,18 @@ The orchestration code is in `app/api/games/enrich/route.ts`.
 | IGDB | Fallback metadata and artwork when no Steam game is found | Optional `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` |
 | HowLongToBeat | Main story, main + extras, and completionist estimates | No Twitch or IGDB credentials |
 
-HowLongToBeat currently uses the existing npm package `howlongtobeat-js`, as requested in the original specification. That package was installed, not written here. `lib/howlongtobeat.d.ts` only describes its result types for TypeScript; it is not an API implementation.
+The first version used the npm package `howlongtobeat-js`, as requested in the original specification. Purgatorio now calls Crashdummy's HowLongToBeat HTTP API directly, and that npm package and its declaration file have been removed. No HowLongToBeat scraper implementation is copied into this repository.
 
 ## What about Crashdummy/HowLongToBeatApi?
 
-The user suggested [Crashdummy/HowLongToBeatApi on Codeberg](https://codeberg.org/Crashdummy/HowLongToBeatApi). It has not been integrated into this version.
+The user supplied the source archive for [Crashdummy/HowLongToBeatApi on Codeberg](https://codeberg.org/Crashdummy/HowLongToBeatApi), which resolved the earlier documentation-access blocker. It is an ASP.NET Core 10 service with SQLite/PostgreSQL caching, backed by a separate scraper dependency.
 
-Attempts to read its README and repository API from Codex were blocked with HTTP 403 by the network proxy. This does not establish that the project is broken or unavailable elsewhere. Its current endpoints, hosting requirements, response format, and license could not be verified here, so this repository does not invent an endpoint or claim to use it.
+Its README documents a hosted service at `https://hltbapi.codepotatoes.de`. Purgatorio uses `GET /steam/{appId}` and `POST /hltb/search`, checks the returned game identity, and maps the actual completion-hour fields. Set `HLTB_API_URL` in `.env` to use a compatible self-hosted deployment. There is no .NET installation requirement for Purgatorio when calling an existing service.
 
-Before replacing `howlongtobeat-js`, inspect that project's documentation to establish whether it provides a hosted HTTP service, a service to run yourself, or a language-specific library. Then map and test its completion-time fields and error behavior. Such a change belongs on `proto`.
+See [the development guide](DEVELOPMENT.md) for a source walkthrough, endpoint table, and the differences between the API's cache and your personal library database.
 
 ## What has been verified?
 
 The initial implementation passed a production build, seven API checks, and browser checks for CRUD, persisted ratings, search, status filtering, CSV export, and mobile layout. The screenshot lightbox and YouTube embed URL were also checked with mocked media responses.
 
-Live provider enrichment was not verified successfully in the original cloud setup: requests were restricted and optional credentials were absent. The UI reports provider failures and supports manual entry. Local CRUD and build results do not establish that external services work.
+The original cloud setup could not verify provider enrichment. After adding the API/Steam Community domains and making server requests honor the cloud proxy, live checks succeeded for Portal, Portal 2, and Elden Ring: HowLongToBeat estimates, Steam metadata, and SteamGridDB artwork were returned. The Steam screenshot button also added three public Portal 2 screenshots from the specified profile. IGDB remains unverified without Twitch credentials. These sampled checks do not mean every imported game has metadata.

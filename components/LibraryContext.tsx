@@ -10,7 +10,8 @@ import type { Game, GameInput } from "@/lib/game";
 type Library = {
   games: Game[];
   selected: string | null;
-  select: (id: string) => void;
+  select: (id: string | null) => void;
+  refresh: () => Promise<void>;
   search: string;
   setSearch: (s: string) => void;
   status: string;
@@ -40,9 +41,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     if (!r.ok) throw new Error(result.error);
     setGames(result);
     select((current) =>
-      result.some((g: Game) => g.id === current)
-        ? current
-        : (result[0]?.id ?? null),
+      result.some((g: Game) => g.id === current) ? current : null,
     );
   }, []);
   useEffect(() => {
@@ -72,6 +71,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         games,
         selected,
         select,
+        refresh,
         search,
         setSearch,
         status,

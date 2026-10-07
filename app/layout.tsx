@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Registry from "@/components/Registry";
 import "./globals.scss";
 export const metadata: Metadata = {
-  title: "Backlog — Your next adventure",
+  title: "Purgatorio — Your game collection",
   description:
     "A personal home for every game you play. Track your library, time, and stories.",
 };

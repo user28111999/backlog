@@ -1,35 +1,21 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { HowLongToBeat } from "howlongtobeat-js";
+import { emptyTimes, fetchHltb } from "@/lib/hltb";
 import { apiError, sameOrigin } from "@/lib/http";
 import type { GameInput } from "@/lib/game";
+import { providerFetch } from "@/lib/provider-fetch";
 const input = z.object({
   title: z.string().trim().min(1).max(200),
   steamAppId: z.string().regex(/^\d+$/).optional(),
 });
 async function json(url: string, init?: RequestInit) {
-  const r = await fetch(url, {
+  const r = await providerFetch(url, {
     ...init,
     signal: AbortSignal.timeout(8000),
     cache: "no-store",
   });
   if (!r.ok) throw new Error(`Provider HTTP ${r.status}`);
   return r.json();
-}
-function deadline<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Timed out")), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
 }
 export async function POST(req: Request) {
   if (!sameOrigin(req))
@@ -39,21 +25,18 @@ export async function POST(req: Request) {
     const data: Partial<GameInput> = {};
     const warnings: string[] = [];
     const sources: string[] = [];
-    const hltb = deadline(new HowLongToBeat(0.8).search(title), 10000)
-      .then((results) => {
-        const match = results?.sort((a, b) => b.similarity - a.similarity)[0];
+    const hltb = fetchHltb(title, steamAppId)
+      .then((match) => {
         if (!match) {
-          warnings.push("HowLongToBeat returned no match or is unavailable.");
+          Object.assign(data, emptyTimes);
           return;
         }
-        data.hltbMainStoryHours = match.mainStory;
-        data.hltbMainExtraHours = match.mainExtra;
-        data.hltbCompletionistHours = match.completionist;
+        Object.assign(data, match);
         sources.push("HowLongToBeat");
       })
       .catch(() => {
         warnings.push(
-          "HowLongToBeat is unavailable; enter estimates manually.",
+          "HowLongToBeat is unavailable. Missing estimates remain blank.",
         );
       });
     let appId = steamAppId;
@@ -78,7 +61,8 @@ export async function POST(req: Request) {
           steamFound = true;
           data.steamAppId = appId;
           data.title = g.name;
-          data.coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`;
+          // Use artwork returned by the provider, not a guessed asset URL.
+          data.coverUrl = g.header_image || "";
           data.heroUrl = g.background_raw || g.background || g.header_image;
           data.gallery = (g.screenshots ?? []).map(
             (s: { path_full: string }) => s.path_full,

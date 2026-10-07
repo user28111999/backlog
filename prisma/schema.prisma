@@ -8,6 +8,8 @@ enum GameStatus {
   REGULAR_ROTATION
   PLAYING
   PLAYED
+  FINISHED
+  WAITING
   OCCASIONAL
   INTERESTED
   DROPPED
@@ -15,14 +17,18 @@ enum GameStatus {
 model Game {
   id String @id @default(uuid())
   title String
+  category String?
+  importKey String? @unique
   releaseDate String?
   status GameStatus @default(INTERESTED)
   platform String @default("PC")
-  timePlayedHours Float @default(0)
+  timePlayedHours Float? @default(0)
+  metadataFetchedAt DateTime?
+  hltbFetchedAt DateTime?
   rating Int?
   reviewNotes String?
   inputMethod String @default("Keyboard & Mouse")
-  isModded Boolean @default(false)
+  isModded Boolean? @default(false)
   modNotes String?
   additionalNotes String?
   steamAppId String?

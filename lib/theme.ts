@@ -1,10 +1,11 @@
 export const theme = {
   colors: {
-    background: "#171a21",
-    panel: "#1b2838",
-    border: "#2a475e",
-    accent: "#66c0f4",
-    text: "#e8edf3",
-    muted: "#8a9bad",
+    background: "#0f0e11",
+    panel: "#23252d",
+    surface: "#2b2d35",
+    border: "#3a3c44",
+    accent: "#46484f",
+    text: "#f0eff2",
+    muted: "#a4a2ac",
   },
 };

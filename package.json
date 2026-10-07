@@ -1,5 +1,5 @@
 {
-  "name": "backlog",
+  "name": "purgatorio",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,19 +9,23 @@
     "db:push": "node scripts/prisma.cjs push",
     "typecheck": "tsc --noEmit",
     "db:generate": "node scripts/prisma.cjs generate",
-    "test:api": "node --test tests/api.test.mjs"
+    "test:api": "node --test tests/api.test.mjs",
+    "test:unit": "tsx --test tests/*.test.ts",
+    "import:csv": "tsx scripts/import-csv.ts"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.0",
     "@prisma/client": "7.10.0",
+    "cheerio": "^1.2.0",
+    "csv-parse": "^7.0.3",
     "dotenv": "^18.0.6",
-    "howlongtobeat-js": "^1.0.0",
     "lucide-react": "^0.468.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sass": "^1.93.0",
     "styled-components": "^6.1.19",
+    "undici": "^8.11.2",
     "zod": "^4.1.0"
   },
   "devDependencies": {
@@ -33,6 +37,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "prisma": "7.10.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.0"
   },
   "engines": {

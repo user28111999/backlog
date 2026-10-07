@@ -1,6 +1,8 @@
-# Backlog
+# Purgatorio
 
-A Steam-inspired personal game library built with Next.js App Router, React, styled-components (SSR), SCSS, Prisma, and local SQLite. The library starts empty; no example games are inserted into your personal data.
+A personal game library built with Next.js App Router, React, styled-components (SSR), SCSS, Prisma, and local SQLite. Purgatorio uses the charcoal palette `#0f0e11`, `#23252d`, `#2b2d35`, `#3a3c44`, and `#46484f`. A new database starts empty; import your own CSV through the header or command line.
+
+Returning to coding? Read [the development guide](docs/DEVELOPMENT.md) for `npm ci` versus `npm install`, the daily `npm run dev` workflow, importing your spreadsheet, and a walkthrough of the uploaded C# HowLongToBeat API.
 
 ## Get the code on your computer
 
@@ -59,7 +61,11 @@ The environment is already isolated: use this checkout; do not create an additio
 ## Features
 
 - Responsive library sidebar with title/platform search, status and platform filters, and all ten requested sort orders. Unknown dates/ratings/estimates sort last.
-- Add/edit dialog with an explicit metadata fetch action. Review fetched values before saving.
+- Square-tile collection homepage when no game is selected; a blurred background uses an existing screenshot from a played game when available.
+- Add/edit dialog with searchable platform chips, comma-separated entry, and automatic metadata fetching. Review fetched values before saving.
+- Finished and Waiting statuses, spreadsheet categories, and repeat-safe Google Sheets CSV import.
+- Actual completion estimates from Crashdummy's HowLongToBeat HTTP API; missing estimates remain blank and personal playtime remains separate.
+- A Steam screenshot-fetch button for the public `windowpeeper` profile, plus a direct link to its filtered screenshot page.
 - Game details with artwork, Steam links, playtime comparisons, interactive rating, notes, mods, trailers, and screenshot lightbox.
 - CSV export includes all database fields, JSON-encoded screenshots, escaped multiline text, and spreadsheet-formula protection.
 - `GET/POST /api/games`, `GET/PATCH/DELETE /api/games/:id`, and `POST /api/games/enrich`.
@@ -74,11 +80,11 @@ Set credentials in your deployment's secure environment settings or an ignored `
 | Steam Store | No key | Exact-title search or a supplied Steam App ID; details, screenshots, trailers, release date, and default artwork |
 | SteamGridDB | `STEAMGRIDDB_API_KEY` | Vertical grids, heroes, transparent logos for a matched Steam game |
 | IGDB/Twitch | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | OAuth client-credentials exchange, then exact-title IGDB fallback for non-Steam games |
-| HowLongToBeat | No key | `howlongtobeat-js` completion estimates; upstream changes or access controls may make this unavailable |
+| HowLongToBeat API | No key; optional `HLTB_API_URL` | Crashdummy's hosted API supplies completion estimates; a compatible self-hosted service can replace its base URL |
 
-The server must reach `store.steampowered.com`, `www.steamgriddb.com`, `id.twitch.tv`, `api.igdb.com`, and `howlongtobeat.com`. Client artwork may use Steam CDN hosts, `images.igdb.com`, and image hosts returned by SteamGridDB. Provider failures return warnings and never prevent manual entry. Metadata is fetched on demand and persisted only when the user saves the game. Exact-title matching avoids silently importing a different game; use a Steam App ID when titles differ.
+The server must reach `store.steampowered.com`, `steamcommunity.com`, `www.steamgriddb.com`, `id.twitch.tv`, `api.igdb.com`, and `hltbapi.codepotatoes.de` (or your configured HLTB host). Client artwork may use Steam CDN hosts, `images.igdb.com`, and image hosts returned by SteamGridDB. Server requests honor standard HTTP proxy variables. Provider failures leave missing values blank. Form metadata is saved with the game; estimates fetched while viewing a game and screenshots fetched through the button are saved directly. Exact-title/Steam-ID matching avoids silently importing a different game.
 
-Live metadata was not verified in the onboarding machine: provider egress is restricted and optional credentials are absent. The app reports those failures. The environment draft includes the provider domains for review and publication.
+Provider access depends on your environment's network settings. The basic library and CSV import work without provider credentials. IGDB needs Twitch credentials; SteamGridDB needs its own API key. Use `npm run test:unit` for CSV parsing, platform filtering, provider response mapping, and screenshot parser checks; `npm run test:api` checks CRUD against a running server.
 
 ## Prisma setup in restricted environments
 

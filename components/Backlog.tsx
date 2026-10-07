@@ -6,6 +6,7 @@ import {
   Search,
   Plus,
   Download,
+  Upload,
   Library,
   ChevronDown,
   ArrowUpDown,
@@ -29,14 +30,18 @@ import { LibraryProvider, useLibrary } from "./LibraryContext";
 import { Game, GameInput, statuses, statusLabel } from "@/lib/game";
 import { exportCSV } from "@/lib/csv";
 import { youtubeEmbed } from "@/lib/media";
+import { splitPlatforms } from "@/lib/platforms";
+import { filterGames } from "@/lib/library-filter";
+import PlatformInput from "./PlatformInput";
+import CollectionGrid from "./CollectionGrid";
 const Button = styled.button<{ $primary?: boolean }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid ${(p) => (p.$primary ? "#66c0f4" : "#354457")};
-  background: ${(p) => (p.$primary ? "linear-gradient(110deg,#66c0f4,#4197d1)" : "#253346")};
-  color: ${(p) => (p.$primary ? "#102638" : "#d3dce7")};
+  border: 1px solid #46484f;
+  background: ${(p) => (p.$primary ? "linear-gradient(110deg,#46484f,#3a3c44)" : "#2b2d35")};
+  color: #f0eff2;
   padding: 10px 15px;
   border-radius: 5px;
   font-size: 12px;
@@ -84,20 +89,64 @@ function Art({
   );
 }
 export function Header({ onAdd }: { onAdd: () => void }) {
-  const { games, search, setSearch } = useLibrary();
+  const { games, search, setSearch, select, refresh } = useLibrary();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
   return (
     <header className="header">
-      <a className="brand" href="/" aria-label="Backlog home">
+      <a
+        className="brand"
+        href="/"
+        aria-label="Purgatorio home"
+        onClick={(e) => {
+          e.preventDefault();
+          select(null);
+        }}
+      >
         <span className="brand-icon">
           <Layers size={22} />
         </span>
-        BACKLOG<span className="brand-dot">.</span>
+        PURGATORIO<span className="brand-dot">.</span>
       </a>
       <nav>
         <span className="active-nav">LIBRARY</span>
         <span className="nav-caption">Your games. Your journey.</span>
       </nav>
       <div className="header-actions">
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".csv,text/csv"
+          hidden
+          aria-label="Import game CSV"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setImporting(true);
+            setImportMessage("");
+            try {
+              const data = new FormData();
+              data.append("file", file);
+              const response = await fetch("/api/games/import", {
+                method: "POST",
+                body: data,
+              });
+              const result = await response.json();
+              if (!response.ok) throw new Error(result.error);
+              await refresh();
+              select(null);
+              setImportMessage(
+                `Imported ${result.imported} games; ${result.skipped} rows already imported.`,
+              );
+            } catch (error) {
+              setImportMessage((error as Error).message);
+            } finally {
+              setImporting(false);
+              e.target.value = "";
+            }
+          }}
+        />
         <label className="search">
           <Search size={16} />
           <input
@@ -108,6 +157,16 @@ export function Header({ onAdd }: { onAdd: () => void }) {
           />
           <kbd>⌕</kbd>
         </label>
+        <Button
+          disabled={importing}
+          onClick={() => fileInput.current?.click()}
+          title="Import Google Sheets CSV"
+        >
+          <Upload />
+          <span className="export-label">
+            {importing ? "Importing…" : "Import CSV"}
+          </span>
+        </Button>
         <Button onClick={() => exportCSV(games)} title="Export all games">
           <Download />
           <span className="export-label">Export CSV</span>
@@ -117,6 +176,18 @@ export function Header({ onAdd }: { onAdd: () => void }) {
           Add Game
         </Button>
       </div>
+      {importMessage && (
+        <div className="import-toast" role="status">
+          {importMessage}
+          <button
+            className="icon-button"
+            aria-label="Dismiss import message"
+            onClick={() => setImportMessage("")}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </header>
   );
 }
@@ -134,34 +205,22 @@ const sorts = [
 ];
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
   const l = useLibrary();
-  const filtered = useMemo(() => {
-    const [key, dir] = l.sort.split("-");
-    return l.games
-      .filter(
-        (g) =>
-          (g.title + " " + g.platform)
-            .toLowerCase()
-            .includes(l.search.toLowerCase()) &&
-          (l.status === "ALL" || g.status === l.status) &&
-          (l.platform === "ALL" || g.platform === l.platform),
-      )
-      .sort((a, b) => {
-        const av = a[key as keyof Game],
-          bv = b[key as keyof Game];
-        if (av == null || av === "") return bv == null || bv === "" ? 0 : 1;
-        if (bv == null || bv === "") return -1;
-        const c =
-          typeof av === "number" && typeof bv === "number"
-            ? av - bv
-            : String(av).localeCompare(String(bv));
-        return dir === "asc" ? c : -c;
-      });
-  }, [l.games, l.search, l.status, l.platform, l.sort]);
+  const filtered = useMemo(
+    () => filterGames(l.games, l.search, l.status, l.platform, l.sort),
+    [l.games, l.search, l.status, l.platform, l.sort],
+  );
   return (
     <aside className="sidebar">
       <div className="sidebar-title">
         <Library size={18} />
-        <h2>My library</h2>
+        <h2>
+          <button
+            className="library-home-button"
+            onClick={() => l.select(null)}
+          >
+            My library
+          </button>
+        </h2>
         <span className="count">{l.games.length}</span>
       </div>
       <div className="filters">
@@ -184,9 +243,11 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
             onChange={(e) => l.setPlatform(e.target.value)}
           >
             <option value="ALL">All platforms</option>
-            {[...new Set(l.games.map((g) => g.platform))].sort().map((p) => (
-              <option key={p}>{p}</option>
-            ))}
+            {[...new Set(l.games.flatMap((g) => splitPlatforms(g.platform)))]
+              .sort()
+              .map((p) => (
+                <option key={p}>{p}</option>
+              ))}
           </select>
         </div>
         <label className="sort">
@@ -232,15 +293,20 @@ export function GameList({ games }: { games: Game[] }) {
         <button
           key={g.id}
           className={`game-row ${selected === g.id ? "selected" : ""}`}
-          onClick={() => select(g.id)}
+          onClick={() => select(selected === g.id ? null : g.id)}
+          aria-pressed={selected === g.id}
         >
           <Art src={g.coverUrl} alt="" className="game-thumb" />
           <span className="game-row-info">
             <strong>{g.title}</strong>
             <small>
               {g.platform}
-              <span>·</span>
-              {g.timePlayedHours} hrs
+              {g.timePlayedHours != null && (
+                <>
+                  <span>·</span>
+                  {g.timePlayedHours} hrs
+                </>
+              )}
             </small>
           </span>
           <span
@@ -253,6 +319,37 @@ export function GameList({ games }: { games: Game[] }) {
   );
 }
 export function HLTBCard({ game: g }: { game: Game }) {
+  const { refresh } = useLibrary();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (
+      g.hltbFetchedAt &&
+      Date.now() - new Date(g.hltbFetchedAt).getTime() < 86400000
+    ) {
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    setMessage("");
+    fetch(`/api/games/${g.id}/hltb`, {
+      method: "POST",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+        if (!controller.signal.aborted) await refresh();
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setMessage(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [g.id, g.hltbFetchedAt, refresh]);
   const values = [
     { name: "Your playtime", value: g.timePlayedHours, own: true },
     { name: "Main story", value: g.hltbMainStoryHours },
@@ -279,7 +376,7 @@ export function HLTBCard({ game: g }: { game: Game }) {
           <div key={v.name} className={v.own ? "own-time" : ""}>
             <span>{v.name}</span>
             <strong>
-              {v.value ?? "—"}
+              {v.value ?? ""}
               <small>{v.value != null ? " hrs" : ""}</small>
             </strong>
             <div className="meter">
@@ -289,7 +386,10 @@ export function HLTBCard({ game: g }: { game: Game }) {
         ))}
       </div>
       <p className="card-footnote">
-        A little progress is still progress. Play at your own pace.
+        {loading
+          ? "Fetching HowLongToBeat estimates…"
+          : message ||
+            "HowLongToBeat estimates are separate from your recorded playtime."}
       </p>
     </section>
   );
@@ -343,7 +443,9 @@ export function GameDetail({
   game: Game;
   onEdit: () => void;
 }) {
-  const { save, remove } = useLibrary();
+  const { save, remove, refresh } = useLibrary();
+  const [screenshotsBusy, setScreenshotsBusy] = useState(false);
+  const [screenshotMessage, setScreenshotMessage] = useState("");
   const embedUrl = youtubeEmbed(g.trailerUrl);
   const [lightbox, setLightbox] = useState<string | null>(null),
     [deleting, setDeleting] = useState(false),
@@ -353,6 +455,7 @@ export function GameDetail({
     setError("");
     setDeleting(false);
     setLightbox(null);
+    setScreenshotMessage("");
   }, [g.id]);
   async function rate(rating: number | null) {
     setBusy(true);
@@ -385,20 +488,21 @@ export function GameDetail({
             />
           )}
           <h1>{g.title}</h1>
+          {g.category && <span className="category-label">{g.category}</span>}
           <div className="hero-meta">
             <span>
               <Monitor size={14} />
               {g.platform}
             </span>
-            <span>
-              Released{" "}
-              {g.releaseDate
-                ? new Date(g.releaseDate + "T00:00:00").toLocaleDateString(
-                    "en-US",
-                    { month: "short", day: "numeric", year: "numeric" },
-                  )
-                : "date unknown"}
-            </span>
+            {g.releaseDate && (
+              <span>
+                Released{" "}
+                {new Date(g.releaseDate + "T00:00:00").toLocaleDateString(
+                  "en-US",
+                  { month: "short", day: "numeric", year: "numeric" },
+                )}
+              </span>
+            )}
             <span>{g.inputMethod}</span>
           </div>
         </div>
@@ -495,7 +599,11 @@ export function GameDetail({
               <div>
                 <dt>Modded</dt>
                 <dd className={g.isModded ? "blue" : ""}>
-                  {g.isModded ? "Yes · Customized" : "No · Vanilla"}
+                  {g.isModded == null
+                    ? "Unknown"
+                    : g.isModded
+                      ? "Yes · Customized"
+                      : "No · Vanilla"}
                 </dd>
               </div>
             </dl>
@@ -519,6 +627,50 @@ export function GameDetail({
             </h3>
             <span>{g.gallery.length} SCREENSHOTS</span>
           </div>
+          {g.steamAppId && (
+            <div className="screenshot-actions">
+              <Button
+                disabled={screenshotsBusy}
+                onClick={async () => {
+                  setScreenshotsBusy(true);
+                  setScreenshotMessage("");
+                  try {
+                    const response = await fetch(
+                      `/api/games/${g.id}/screenshots`,
+                      { method: "POST" },
+                    );
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    await refresh();
+                    setScreenshotMessage(
+                      result.message || `Added ${result.added} screenshots.`,
+                    );
+                  } catch (error) {
+                    setScreenshotMessage((error as Error).message);
+                  } finally {
+                    setScreenshotsBusy(false);
+                  }
+                }}
+              >
+                <ImageIcon />
+                {screenshotsBusy
+                  ? "Fetching screenshots…"
+                  : "Fetch Steam screenshots"}
+              </Button>
+              <a
+                href={`https://steamcommunity.com/id/windowpeeper/screenshots/?appid=${g.steamAppId}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                windowpeeper’s screenshots <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
+          {screenshotMessage && (
+            <p className="field-hint" role="status">
+              {screenshotMessage}
+            </p>
+          )}
           {g.trailerUrl &&
             (embedUrl ? (
               <iframe
@@ -619,7 +771,7 @@ const initial: GameInput = {
   title: "",
   status: "INTERESTED",
   platform: "PC",
-  timePlayedHours: 0,
+  timePlayedHours: null,
   rating: null,
   inputMethod: "Keyboard & Mouse",
   isModded: false,
@@ -636,7 +788,7 @@ export function EnrichmentModal({
   game?: Game;
   onClose: () => void;
 }) {
-  const { save } = useLibrary();
+  const { save, games } = useLibrary();
   const [form, setForm] = useState<GameInput>(game ? { ...game } : initial),
     [busy, setBusy] = useState(false),
     [enriching, setEnriching] = useState(false),
@@ -644,12 +796,13 @@ export function EnrichmentModal({
     [messages, setMessages] = useState<string[]>([]);
   const set = (key: keyof GameInput, value: unknown) =>
     setForm((f) => ({ ...f, [key]: value }));
-  async function enrich() {
+  async function enrich(signal?: AbortSignal, automatic = false) {
     setEnriching(true);
     setError("");
     setMessages([]);
     try {
       const r = await fetch("/api/games/enrich", {
+        signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -659,19 +812,53 @@ export function EnrichmentModal({
       });
       const result = await r.json();
       if (!r.ok) throw new Error(result.error);
-      setForm((f) => ({ ...f, ...result.data }));
+      if (signal?.aborted) return;
+      setForm((f) => {
+        if (f.title !== form.title || f.steamAppId !== form.steamAppId)
+          return f;
+        const patch = { ...result.data };
+        delete patch.title;
+        // Never replace existing artwork automatically or clear it after an upstream failure.
+        if (automatic)
+          for (const key of [
+            "coverUrl",
+            "logoUrl",
+            "heroUrl",
+            "trailerUrl",
+            "gallery",
+          ] as const) {
+            if (key === "gallery" ? f.gallery.length : !!f[key])
+              delete patch[key];
+          }
+        return { ...f, ...patch };
+      });
       setMessages([
         result.sources.length
           ? `Fetched from ${result.sources.join(", ")}. Review the fields before saving.`
-          : "No metadata found. You can enter details manually.",
+          : "No metadata found. Missing fields remain blank.",
         ...result.warnings,
       ]);
     } catch (e) {
-      setError((e as Error).message);
+      if (!signal?.aborted) setError((e as Error).message);
     } finally {
-      setEnriching(false);
+      if (!signal?.aborted) setEnriching(false);
     }
   }
+  useEffect(() => {
+    if (form.title.trim().length < 2) {
+      setEnriching(false);
+      return;
+    }
+    if (form.steamAppId && !/^\d+$/.test(form.steamAppId)) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void enrich(controller.signal, true);
+    }, 650);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [form.title, form.steamAppId]);
   const textField = (
     key: keyof GameInput,
     label: string,
@@ -694,13 +881,18 @@ export function EnrichmentModal({
       />
     </label>
   );
-  const numberField = (key: keyof GameInput, label: string) => (
+  const numberField = (
+    key: keyof GameInput,
+    label: string,
+    readOnly = false,
+  ) => (
     <label>
       {label}
       <input
         type="number"
         min="0"
         step="0.1"
+        readOnly={readOnly}
         value={form[key] == null ? "" : Number(form[key])}
         onChange={(e) =>
           set(key, e.target.value === "" ? null : Number(e.target.value))
@@ -739,7 +931,7 @@ export function EnrichmentModal({
         <Button
           type="button"
           disabled={!form.title || enriching}
-          onClick={enrich}
+          onClick={() => void enrich()}
         >
           <Sparkles className={enriching ? "spin" : ""} />
           {enriching ? "Finding your game…" : "Fetch metadata & artwork"}
@@ -767,7 +959,12 @@ export function EnrichmentModal({
               ))}
             </select>
           </label>
-          {textField("platform", "Platform *", "PC, Switch, PS5…")}
+          <PlatformInput
+            value={form.platform}
+            onChange={(value) => set("platform", value)}
+            suggestions={games.flatMap((g) => splitPlatforms(g.platform))}
+          />
+          {textField("category", "Category", "Optional collection category")}
           {textField("releaseDate", "Release date", "", "date")}
           {numberField("timePlayedHours", "Your playtime (hours)")}
           <label>
@@ -797,13 +994,24 @@ export function EnrichmentModal({
             placeholder="The moments worth remembering…"
           />
         </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={form.isModded}
-            onChange={(e) => set("isModded", e.target.checked)}
-          />{" "}
-          I play with mods
+        <label>
+          Modded
+          <select
+            aria-label="Modded"
+            value={
+              form.isModded == null ? "unknown" : form.isModded ? "yes" : "no"
+            }
+            onChange={(e) =>
+              set(
+                "isModded",
+                e.target.value === "unknown" ? null : e.target.value === "yes",
+              )
+            }
+          >
+            <option value="unknown">Unknown</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
         </label>
         {form.isModded && (
           <label>
@@ -827,9 +1035,13 @@ export function EnrichmentModal({
             Completion estimates & media <ChevronDown size={16} />
           </summary>
           <div className="form-grid">
-            {numberField("hltbMainStoryHours", "Main story (hours)")}
-            {numberField("hltbMainExtraHours", "Main + extras (hours)")}
-            {numberField("hltbCompletionistHours", "Completionist (hours)")}
+            {numberField("hltbMainStoryHours", "Main story (hours)", true)}
+            {numberField("hltbMainExtraHours", "Main + extras (hours)", true)}
+            {numberField(
+              "hltbCompletionistHours",
+              "Completionist (hours)",
+              true,
+            )}
             {textField("coverUrl", "Cover URL", "", "url")}
             {textField("heroUrl", "Hero URL", "", "url")}
             {textField("logoUrl", "Logo URL", "", "url")}
@@ -894,6 +1106,8 @@ function App() {
             </div>
           ) : game ? (
             <GameDetail game={game} onEdit={() => setModal("edit")} />
+          ) : l.games.length ? (
+            <CollectionGrid />
           ) : (
             <div className="welcome">
               <div className="welcome-grid" />
