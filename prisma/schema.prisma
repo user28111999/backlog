@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+}
+enum GameStatus {
+  REGULAR_ROTATION
+  PLAYING
+  PLAYED
+  OCCASIONAL
+  INTERESTED
+  DROPPED
+}
+model Game {
+  id String @id @default(uuid())
+  title String
+  releaseDate String?
+  status GameStatus @default(INTERESTED)
+  platform String @default("PC")
+  timePlayedHours Float @default(0)
+  rating Int?
+  reviewNotes String?
+  inputMethod String @default("Keyboard & Mouse")
+  isModded Boolean @default(false)
+  modNotes String?
+  additionalNotes String?
+  steamAppId String?
+  coverUrl String @default("")
+  logoUrl String @default("")
+  heroUrl String @default("")
+  trailerUrl String @default("")
+  gallery Json @default("[]")
+  hltbMainStoryHours Float?
+  hltbMainExtraHours Float?
+  hltbCompletionistHours Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

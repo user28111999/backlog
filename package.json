@@ -1,0 +1,41 @@
+{
+  "name": "backlog",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "npm run db:generate && next build",
+    "start": "next start --hostname 0.0.0.0",
+    "db:push": "node scripts/prisma.cjs push",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "node scripts/prisma.cjs generate",
+    "test:api": "node --test tests/api.test.mjs"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^18.0.6",
+    "howlongtobeat-js": "^1.0.0",
+    "lucide-react": "^0.468.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sass": "^1.93.0",
+    "styled-components": "^6.1.19",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@prisma/client-generator-js": "7.10.0",
+    "@prisma/driver-adapter-utils": "7.10.0",
+    "@prisma/internals": "7.10.0",
+    "@prisma/schema-engine-wasm": "7.10.0-4.0edf323efd1d98336f3f0a68684b56f689b900d3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prisma": "7.10.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
