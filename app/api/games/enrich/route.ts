@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const data: Partial<GameInput> = {};
     const warnings: string[] = [];
     const sources: string[] = [];
-    const hltb = fetchHltb(title, steamAppId)
+    const hltb = fetchHltb(title)
       .then((match) => {
         if (!match) {
           Object.assign(data, emptyTimes);

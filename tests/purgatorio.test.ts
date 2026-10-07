@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseGameCsv } from "../lib/import-csv";
-import { matchHltb, emptyTimes } from "../lib/hltb";
+import { matchHltb, emptyTimes, fetchHltb } from "../lib/hltb";
+import { HowLongToBeat } from "howlongtobeat-js";
 import {
   parseScreenshotLinks,
   parseScreenshotImage,
@@ -51,15 +52,13 @@ test("invalid import records fail instead of guessing fields", () => {
 test("HowLongToBeat maps actual API field names and treats zero/absent estimates as unknown", () => {
   assert.deepEqual(
     matchHltb(
-      {
-        title: "Portal 2",
-        steamAppId: 620,
+      [{
+        gameName: "Portal 2",
+        similarity: 1,
         mainStory: 8.5,
-        mainStoryWithExtras: 14,
+        mainExtra: 14,
         completionist: 22,
-      },
-      "Portal 2",
-      "620",
+      }],
     ),
     {
       hltbMainStoryHours: 8.5,
@@ -69,20 +68,25 @@ test("HowLongToBeat maps actual API field names and treats zero/absent estimates
   );
   assert.deepEqual(
     matchHltb(
-      [{ title: "Portal 2", mainStory: 0, mainStoryWithExtras: null }],
-      "Portal 2",
+      [{ gameName: "Portal 2", similarity: 1, mainStory: 0, mainExtra: null }],
     ),
     emptyTimes,
   );
 });
-test("HowLongToBeat rejects wrong or ambiguous matches and invalid response shapes", () => {
-  assert.equal(matchHltb([{ title: "Portal" }], "Portal 2"), null);
-  assert.equal(
-    matchHltb([{ title: "Portal 2", steamAppId: 620 }], "Portal 2", "400"),
-    null,
-  );
-  assert.equal(matchHltb([{ title: "Game" }, { title: "Game" }], "Game"), null);
-  assert.throws(() => matchHltb({ error: "Unavailable" }, "Game"), /Invalid/);
+test("HowLongToBeat selects the highest similarity and rejects weak/invalid results", () => {
+  assert.equal(matchHltb([{ gameName: "Portal", similarity: 0.6 }]), null);
+  assert.equal(matchHltb([]), null);
+  assert.deepEqual(matchHltb([
+    { gameName: "Portal", similarity: 0.8, mainStory: 3 },
+    { gameName: "Portal 2", similarity: 1, mainStory: 8.5 },
+  ]), { ...emptyTimes, hltbMainStoryHours: 8.5 });
+  assert.throws(() => matchHltb({ error: "Unavailable" }), /Invalid/);
+});
+test("HowLongToBeat distinguishes provider failures from a confirmed no-match", async (t) => {
+  const search = t.mock.method(HowLongToBeat.prototype, "search", async () => null);
+  await assert.rejects(fetchHltb("Portal 2"), /unavailable/);
+  search.mock.mockImplementation(async () => []);
+  assert.equal(await fetchHltb("Portal 2"), null);
 });
 test("platform tags are trimmed/deduplicated and filters match individual platforms", () => {
   assert.deepEqual(splitPlatforms(" PC, Switch, PC, pc, , PS5 "), [

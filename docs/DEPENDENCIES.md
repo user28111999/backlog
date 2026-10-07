@@ -53,18 +53,8 @@ The orchestration code is in `app/api/games/enrich/route.ts`.
 | IGDB | Fallback metadata and artwork when no Steam game is found | Optional `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` |
 | HowLongToBeat | Main story, main + extras, and completionist estimates | No Twitch or IGDB credentials |
 
-The first version used the npm package `howlongtobeat-js`, as requested in the original specification. Purgatorio now calls Crashdummy's HowLongToBeat HTTP API directly, and that npm package and its declaration file have been removed. No HowLongToBeat scraper implementation is copied into this repository.
+Purgatorio uses the original npm package `howlongtobeat-js` to search HowLongToBeat directly by title. `lib/hltb.ts` selects the highest similarity match at or above 0.8 and maps its hours into the app. `lib/howlongtobeat.d.ts` describes the package's types for TypeScript; it is not another implementation. No separate API service or base-URL setting is used.
 
-## What about Crashdummy/HowLongToBeatApi?
+The package is installed normally by npm. No installed package is edited manually. Missing or zero estimates stay blank, and request failures preserve saved estimates. HowLongToBeat's website may block automated requests or change its endpoints; build and local API tests do not prove that this external provider is reachable.
 
-The user supplied the source archive for [Crashdummy/HowLongToBeatApi on Codeberg](https://codeberg.org/Crashdummy/HowLongToBeatApi), which resolved the earlier documentation-access blocker. It is an ASP.NET Core 10 service with SQLite/PostgreSQL caching, backed by a separate scraper dependency.
-
-Its README documents a hosted service at `https://hltbapi.codepotatoes.de`. Purgatorio uses `GET /steam/{appId}` and `POST /hltb/search`, checks the returned game identity, and maps the actual completion-hour fields. Set `HLTB_API_URL` in `.env` to use a compatible self-hosted deployment. There is no .NET installation requirement for Purgatorio when calling an existing service.
-
-See [the development guide](DEVELOPMENT.md) for a source walkthrough, endpoint table, and the differences between the API's cache and your personal library database.
-
-## What has been verified?
-
-The initial implementation passed a production build, seven API checks, and browser checks for CRUD, persisted ratings, search, status filtering, CSV export, and mobile layout. The screenshot lightbox and YouTube embed URL were also checked with mocked media responses.
-
-The original cloud setup could not verify provider enrichment. After adding the API/Steam Community domains and making server requests honor the cloud proxy, live checks succeeded for Portal, Portal 2, and Elden Ring: HowLongToBeat estimates, Steam metadata, and SteamGridDB artwork were returned. The Steam screenshot button also added three public Portal 2 screenshots from the specified profile. IGDB remains unverified without Twitch credentials. These sampled checks do not mean every imported game has metadata.
+After restoring this integration, the production build, eight unit tests, and seven local API checks passed. A live Portal 2 lookup received HTTP 403 when accessing HowLongToBeat from the cloud environment, so live estimates could not be verified there.

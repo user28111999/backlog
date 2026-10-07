@@ -65,56 +65,11 @@ The expected columns are `Category`, `Status`, `Game Title`, `Platform`, `Input 
 
 Unknown modding values stay unknown. Absent playtimes, ratings, dates, estimates, and media stay empty. The import does not invent gameplay hours. You can use `--dry-run` to validate a file without importing it.
 
-## What the uploaded HowLongToBeat project is
+## How completion times are fetched
 
-The uploaded archive contains a **C# / ASP.NET Core 10 HTTP API**, not a JavaScript npm package. Its README documents a hosted demo at `https://hltbapi.codepotatoes.de` and interactive endpoint documentation at `/scalar`. You can also run that service yourself with .NET 10.
+Purgatorio uses `howlongtobeat-js`, the same npm package as the first version. It contacts HowLongToBeat directly from the server; no separate .NET service or API URL is needed.
 
-Purgatorio calls this service over HTTP. That means you do not need to install .NET to run Purgatorio when using the hosted service. `HLTB_API_URL` can select your own compatible deployment. Purgatorio uses the endpoint contract; it does not copy the uploaded C# implementation into `node_modules`.
-
-### Following one request through the C# code
-
-Suppose the client calls `GET /steam/620`:
-
-1. **`Program.cs` starts the server.** It registers the database, HTTP client, title-lookup service, and HowLongToBeat scraper. It applies database migrations, registers routes, and starts listening.
-2. **`HowLongToBeatController.cs` receives the request.** `app.MapGet("/steam/{appId}", GetFromSteamAppId)` connects that URL to the handler. This is the same role as a Next.js route handler.
-3. **The handler checks its database cache.** An entry with that Steam ID can be returned without another lookup.
-4. **`TitleLookup.cs` resolves the Steam ID to a title** through Steam's store API if the cache misses. GOG lookup similarly uses GOGDB.
-5. **`Codepotatoes.Scraper.HowLongToBeat` searches HowLongToBeat.** This is a separate dependency referenced in the `.csproj`; its full implementation is not in the uploaded archive.
-6. **`GameEntryConverter.cs` converts the scraper's model into the API's model.** `FindGame` inserts or updates suitable results in the cache, then the handler returns the matching game as JSON.
-
-`async`/`await` serves the same purpose as in JavaScript: wait for network or database operations without blocking the request thread. `Task<IResult>` means the method asynchronously produces an HTTP result. `Results.Ok(...)`, `Results.NotFound(...)`, and `Results.BadRequest(...)` correspond to HTTP 200, 404, and 400 responses.
-
-The framework supplies the handler's `HltbDbContext`, `ITitleLookup`, and scraper parameters. This is dependency injection: the handler declares what it needs and the startup registrations tell the framework how to construct it.
-
-### The main files
-
-| File/directory in the archive | Responsibility |
-| --- | --- |
-| `src/Api/HowLongToBeatApi.csproj` | .NET target version and NuGet dependencies; comparable to the dependency portion of `package.json` |
-| `src/Api/Program.cs` | Application startup, service registration, database setup, and route registration |
-| `Controllers/HowLongToBeatController.cs` | HTTP endpoints and cache/search orchestration |
-| `Models/GameEntry.cs` | Fields returned by the API: IDs, title, cover URL, completion hours, and last-update time |
-| `Payloads/HltbSearchPayload.cs` | Search input: `searchTerm`, `matchType`, and optional `platform` |
-| `Services/TitleLookup.cs` | Gets game titles from Steam IDs or GOG IDs |
-| `Services/HltbDbContext.cs` | Entity Framework database access; SQLite by default, with PostgreSQL support |
-| `Migrations/` | Versioned changes to the API's database tables |
-| `tests/UnitTests/TitleLookupTests.cs` | Checks title lookup against real Steam/GOG services; these are network-dependent checks despite the directory name |
-
-The API's database caches shared game metadata. Your Purgatorio database stores your own statuses, platforms, notes, ratings, and playtime. They serve different purposes.
-
-### Endpoints and response mapping
-
-| Endpoint | Purpose | Successful response |
-| --- | --- | --- |
-| `GET /steam/{appId}` | Look up a Steam game | One game object |
-| `GET /gog/{appId}` | Look up a GOG game | One game object |
-| `GET /hltb/{id}` | Look up a HowLongToBeat ID | One game object |
-| `GET /hltb/{id}/refresh` | Refresh a cached entry | One game object |
-| `POST /hltb/search` | Search by title | An array of game objects |
-
-Purgatorio tries the Steam ID when available, otherwise an exact-title search. It maps `mainStory`, `mainStoryWithExtras`, and `completionist` to its three estimate columns. These are hours. Missing or zero estimates stay blank; they never overwrite **Your playtime**.
-
-The uploaded README and source differ in a few details: the README broadly describes array results, but the ID endpoints return an object. The README mentions a small-result caching threshold that is not enforced in the controller's current `FindGame` implementation. The client follows the source's actual response shapes. Cached entries are not automatically expired by this controller; the refresh endpoint exists for updating them.
+`lib/hltb.ts` searches by game title, selects the highest similarity result with a score of at least 0.8, and maps `mainStory`, `mainExtra`, and `completionist` into the three estimate columns. These values are hours. Missing or zero estimates stay blank and never overwrite **Your playtime**. A failed request preserves saved estimates instead of treating a network error as a confirmed missing game. Similar titles can still produce incorrect matches, so review fetched values before saving.
 
 Purgatorio automatically fetches estimates when you view a game and caches a successful lookup, including a confirmed no-match, for 24 hours. The add/edit form automatically fetches estimates and available artwork after the title or Steam ID settles. Existing artwork is preserved during automatic requests, and stale requests are cancelled when you change the title.
 

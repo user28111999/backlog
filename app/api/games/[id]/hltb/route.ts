@@ -20,7 +20,7 @@ export async function POST(
       Date.now() - game.hltbFetchedAt.getTime() < 86400000
     )
       return NextResponse.json({ game });
-    const times = await fetchHltb(game.title, game.steamAppId || undefined);
+    const times = await fetchHltb(game.title);
     const updated = await db.game.update({
       where: { id: game.id },
       data: { ...(times || emptyTimes), hltbFetchedAt: new Date() },
