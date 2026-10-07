@@ -1,6 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseGameCsv } from "../lib/import-csv";
 import { matchHltb, emptyTimes, fetchHltb } from "../lib/hltb";
 import { HowLongToBeat } from "howlongtobeat-js";
 import {
@@ -11,44 +10,6 @@ import { splitPlatforms } from "../lib/platforms";
 import { filterGames } from "../lib/library-filter";
 import { gameSchema, type Game } from "../lib/game";
 
-const header =
-  "Category,Status,Game Title,Platform,Input Method,Modded,Additional Notes\r\n";
-test("CSV preserves categories, repeated titles, multiple platforms, unknowns and quoted multiline notes", () => {
-  const csv =
-    header +
-    'Played,Finished,Example,"PC, Switch",Controller,Yes,"First line\nSecond, with ""quotes"""\r\nFavorites,Finished,Example,PC,Controller,Unknown,Favorite\r\n';
-  const rows = parseGameCsv(csv);
-  assert.equal(rows.length, 2);
-  assert.equal(rows[0].data.platform, "PC, Switch");
-  assert.equal(rows[0].data.status, "FINISHED");
-  assert.equal(
-    rows[0].data.additionalNotes,
-    'First line\nSecond, with "quotes"',
-  );
-  assert.equal(rows[1].data.category, "Favorites");
-  assert.equal(rows[1].data.isModded, null);
-  assert.equal(rows[0].data.timePlayedHours, null);
-  assert.equal(rows[0].data.hltbMainStoryHours, null);
-  assert.deepEqual(rows[0].data.gallery, []);
-  assert.notEqual(rows[0].importKey, rows[1].importKey);
-  assert.deepEqual(parseGameCsv(csv), rows);
-});
-test("identical CSV rows get distinct but stable import keys", () => {
-  const csv =
-    header +
-    "Played,Finished,Example,PC,Controller,No,\nPlayed,Finished,Example,PC,Controller,No,\n";
-  const rows = parseGameCsv(csv);
-  assert.notEqual(rows[0].importKey, rows[1].importKey);
-  assert.deepEqual(rows, parseGameCsv(csv));
-});
-test("invalid import records fail instead of guessing fields", () => {
-  assert.throws(() => parseGameCsv("title\nExample"), /Expected columns/);
-  assert.throws(
-    () =>
-      parseGameCsv(header + "Played,NoSuchStatus,Example,PC,Controller,No,\n"),
-    /unknown status/,
-  );
-});
 test("HowLongToBeat maps actual API field names and treats zero/absent estimates as unknown", () => {
   assert.deepEqual(
     matchHltb(

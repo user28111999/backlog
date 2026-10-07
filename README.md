@@ -1,8 +1,8 @@
 # Purgatorio
 
-A personal game library built with Next.js App Router, React, styled-components (SSR), SCSS, Prisma, and local SQLite. Purgatorio uses the charcoal palette `#0f0e11`, `#23252d`, `#2b2d35`, `#3a3c44`, and `#46484f`. A new database starts empty; import your own CSV through the header or command line.
+A personal game library built with Next.js App Router, React, styled-components (SSR), SCSS, Prisma, and local SQLite. Purgatorio uses the charcoal palette `#0f0e11`, `#23252d`, `#2b2d35`, `#3a3c44`, and `#46484f`. Load your supplied 750-game list with `npm run db:seed`, or add games individually.
 
-Returning to coding? Read [the development guide](docs/DEVELOPMENT.md) for `npm ci` versus `npm install`, the daily `npm run dev` workflow, importing your spreadsheet, and how completion estimates are fetched.
+Returning to coding? Read [the development guide](docs/DEVELOPMENT.md) for `npm ci` versus `npm install`, the daily `npm run dev` workflow, loading your game list, and how completion estimates are fetched.
 
 ## Get the code on your computer
 
@@ -14,6 +14,7 @@ cd backlog
 npm ci
 npm run db:generate
 npm run db:push
+npm run db:seed
 npm run dev
 ```
 
@@ -49,10 +50,11 @@ npm ci
 # Optional: copy .env.example to .env if .env does not already exist.
 npm run db:generate
 npm run db:push
+npm run db:seed
 npm run dev
 ```
 
-SQLite defaults to `file:./prisma/dev.db`, relative to the checkout. Keep that file to preserve your library. `DATABASE_URL` can override it. No API credentials are needed for manual game entry, editing, rating, filtering, or export.
+SQLite defaults to `file:./prisma/dev.db`, relative to the checkout. Keep that file to preserve your library. `DATABASE_URL` can override it. No API credentials are needed for manual game entry, editing, rating, and filtering.
 
 For production: `npm run build`, then `npm start`. `npm run typecheck` validates TypeScript. With the server running, `npm run test:api` tests SQLite CRUD, input validation, and partial-update preservation; it removes its own test entry afterward. `TEST_BASE_URL` can select another test server.
 
@@ -63,11 +65,10 @@ The environment is already isolated: use this checkout; do not create an additio
 - Responsive library sidebar with title/platform search, status and platform filters, and all ten requested sort orders. Unknown dates/ratings/estimates sort last.
 - Square-tile collection homepage when no game is selected; a blurred background uses an existing screenshot from a played game when available.
 - Add/edit dialog with searchable platform chips, comma-separated entry, and automatic metadata fetching. Review fetched values before saving.
-- Finished and Waiting statuses, spreadsheet categories, and repeat-safe Google Sheets CSV import.
+- Finished and Waiting statuses, categories, and a repeat-safe script with your complete game list.
 - Actual completion estimates from HowLongToBeat using the original `howlongtobeat-js` package; missing estimates remain blank and personal playtime remains separate.
 - A Steam screenshot-fetch button for the public `windowpeeper` profile, plus a direct link to its filtered screenshot page.
 - Game details with artwork, Steam links, playtime comparisons, interactive rating, notes, mods, trailers, and screenshot lightbox.
-- CSV export includes all database fields, JSON-encoded screenshots, escaped multiline text, and spreadsheet-formula protection.
 - `GET/POST /api/games`, `GET/PATCH/DELETE /api/games/:id`, and `POST /api/games/enrich`.
 - Database status identifiers map to friendly UI labels, including `REGULAR_ROTATION` → “Regular Rotation”. Dates use YYYY-MM-DD; times use hours.
 
@@ -84,7 +85,7 @@ Set credentials in your deployment's secure environment settings or an ignored `
 
 The server must reach `store.steampowered.com`, `steamcommunity.com`, `www.steamgriddb.com`, `id.twitch.tv`, `api.igdb.com`, and `howlongtobeat.com`. Client artwork may use Steam CDN hosts, `images.igdb.com`, and image hosts returned by SteamGridDB. Server requests honor standard HTTP proxy variables. Provider failures leave missing values blank. Form metadata is saved with the game; estimates fetched while viewing a game and screenshots fetched through the button are saved directly. Steam/IGDB use exact-title or Steam-ID matching; HowLongToBeat uses title similarity, so review estimates for similarly named games.
 
-Provider access depends on your environment's network settings. The basic library and CSV import work without provider credentials. IGDB needs Twitch credentials; SteamGridDB needs its own API key. Use `npm run test:unit` for CSV parsing, platform filtering, provider response mapping, and screenshot parser checks; `npm run test:api` checks CRUD against a running server.
+Provider access depends on your environment's network settings. The basic library and game-list script work without provider credentials. IGDB needs Twitch credentials; SteamGridDB needs its own API key. Use `npm run test:unit` for platform filtering, provider response mapping, and screenshot parser checks; `npm run test:api` checks CRUD against a running server.
 
 ## Prisma setup in restricted environments
 

@@ -1093,9 +1093,6 @@ details[open] summary {
   .header-actions {
     gap: 7px;
   }
-  .export-label {
-    display: none;
-  }
   .search {
     width: 190px;
   }
@@ -1391,20 +1388,6 @@ main {
 .time-grid strong {
   min-height: 29px;
 }
-.import-toast {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 24px;
-  max-width: min(480px, 90vw);
-  padding: 14px 16px;
-  background: #2b2d35;
-  border: 1px solid #46484f;
-  border-radius: 6px;
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  box-shadow: 0 8px 30px #0005;
-}
 .screenshot-actions {
   display: flex;
   align-items: center;
@@ -1672,9 +1655,6 @@ input[readonly] {
   }
 }
 @media (max-width: 760px) {
-  .header .export-label {
-    display: none;
-  }
   .search {
     width: 180px;
   }

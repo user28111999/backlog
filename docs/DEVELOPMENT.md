@@ -15,7 +15,7 @@ They have different jobs: installation downloads libraries; development starts y
 
 The letters in `ci` come from “clean install”; the command is also useful for continuous-integration systems. It is not a replacement for `npm run dev`, and you do not need to reinstall dependencies every time you start coding.
 
-`npm run anything` looks up `anything` in the `scripts` object of `package.json`. The names `dev`, `build`, `db:generate`, and `import:csv` are project scripts, not universal npm commands. `npm install` and `npm ci` are npm's own installation commands.
+`npm run anything` looks up `anything` in the `scripts` object of `package.json`. The names `dev`, `build`, `db:generate`, and `db:seed` are project scripts, not universal npm commands. `npm install` and `npm ci` are npm's own installation commands.
 
 For example:
 
@@ -38,6 +38,7 @@ First setup, in the cloned repository:
 npm ci
 npm run db:generate
 npm run db:push
+npm run db:seed
 npm run dev
 ```
 
@@ -51,19 +52,22 @@ Open `http://localhost:3000` in your browser. Stop the server with Ctrl+C. Keep 
 
 After pulling changes, reinstall if dependencies changed; regenerate/apply the database schema if the schema changed. `db:generate` creates the database-access code; `db:push` prepares or updates SQLite tables. See [DEPENDENCIES.md](DEPENDENCIES.md) for why this cloud setup uses a custom Prisma helper.
 
-## Importing your spreadsheet on another computer
+## Loading your game list on another computer
 
-The uploaded CSV was imported into the cloud workspace's SQLite database. GitHub carries the code, not your personal database or uploaded CSV. On your computer, either use **Import CSV** in the header or run:
+Your full 750-entry list is embedded in `scripts/game-list.ts`. The executable script is `scripts/seed-games.tsx`; it inserts those entries directly into SQLite. No file upload or import/export controls are needed.
+
+After installing dependencies and preparing the database, run:
 
 ```sh
-npm run import:csv -- "/path/to/GAME LIST - Game List.csv"
+npm run db:seed
+npm run dev
 ```
 
-On Windows the path might be `"C:\Users\you\Downloads\GAME LIST - Game List.csv"`. The `--` tells npm to pass the remaining arguments to the import script.
+You can run the seed command again safely: it adds missing entries and preserves existing edits, ratings, artwork, and playtime. Repeated titles in different categories and repeated source rows stay separate. Keys from the previous import are retained so existing collections are not duplicated.
 
-The expected columns are `Category`, `Status`, `Game Title`, `Platform`, `Input Method`, `Modded`, and `Additional Notes`. Quoted commas and multiline notes are supported. Import validates the complete file before writing and uses a database transaction. Repeating the same import skips rows already imported. Distinct rows with the same game title stay distinct, including different categories.
+The list preserves supplied statuses, platforms, input methods, modding values, categories, and notes. Unknown values stay blank. Completion estimates and media are fetched separately from their actual providers.
 
-Unknown modding values stay unknown. Absent playtimes, ratings, dates, estimates, and media stay empty. The import does not invent gameplay hours. You can use `--dry-run` to validate a file without importing it.
+GitHub carries the embedded list and script. Your local SQLite database still stores subsequent personal edits and should be backed up separately. You can edit the embedded list before its first load; changing an already-loaded entry there does not overwrite that entry in the database—use the game's edit form for that.
 
 ## How completion times are fetched
 

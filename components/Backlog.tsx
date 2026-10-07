@@ -5,8 +5,6 @@ import {
   Gamepad2,
   Search,
   Plus,
-  Download,
-  Upload,
   Library,
   ChevronDown,
   ArrowUpDown,
@@ -28,7 +26,6 @@ import {
 } from "lucide-react";
 import { LibraryProvider, useLibrary } from "./LibraryContext";
 import { Game, GameInput, statuses, statusLabel } from "@/lib/game";
-import { exportCSV } from "@/lib/csv";
 import { youtubeEmbed } from "@/lib/media";
 import { splitPlatforms } from "@/lib/platforms";
 import { filterGames } from "@/lib/library-filter";
@@ -89,10 +86,7 @@ function Art({
   );
 }
 export function Header({ onAdd }: { onAdd: () => void }) {
-  const { games, search, setSearch, select, refresh } = useLibrary();
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState("");
+  const { search, setSearch, select } = useLibrary();
   return (
     <header className="header">
       <a
@@ -114,39 +108,6 @@ export function Header({ onAdd }: { onAdd: () => void }) {
         <span className="nav-caption">Your games. Your journey.</span>
       </nav>
       <div className="header-actions">
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".csv,text/csv"
-          hidden
-          aria-label="Import game CSV"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setImporting(true);
-            setImportMessage("");
-            try {
-              const data = new FormData();
-              data.append("file", file);
-              const response = await fetch("/api/games/import", {
-                method: "POST",
-                body: data,
-              });
-              const result = await response.json();
-              if (!response.ok) throw new Error(result.error);
-              await refresh();
-              select(null);
-              setImportMessage(
-                `Imported ${result.imported} games; ${result.skipped} rows already imported.`,
-              );
-            } catch (error) {
-              setImportMessage((error as Error).message);
-            } finally {
-              setImporting(false);
-              e.target.value = "";
-            }
-          }}
-        />
         <label className="search">
           <Search size={16} />
           <input
@@ -157,37 +118,11 @@ export function Header({ onAdd }: { onAdd: () => void }) {
           />
           <kbd>⌕</kbd>
         </label>
-        <Button
-          disabled={importing}
-          onClick={() => fileInput.current?.click()}
-          title="Import Google Sheets CSV"
-        >
-          <Upload />
-          <span className="export-label">
-            {importing ? "Importing…" : "Import CSV"}
-          </span>
-        </Button>
-        <Button onClick={() => exportCSV(games)} title="Export all games">
-          <Download />
-          <span className="export-label">Export CSV</span>
-        </Button>
         <Button $primary onClick={onAdd}>
           <Plus />
           Add Game
         </Button>
       </div>
-      {importMessage && (
-        <div className="import-toast" role="status">
-          {importMessage}
-          <button
-            className="icon-button"
-            aria-label="Dismiss import message"
-            onClick={() => setImportMessage("")}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
     </header>
   );
 }
